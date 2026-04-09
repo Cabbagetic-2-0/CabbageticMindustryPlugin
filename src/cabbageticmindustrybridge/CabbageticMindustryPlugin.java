@@ -16,6 +16,7 @@ public class CabbageticMindustryPlugin extends Plugin{
     private final String webhookUrl = "https://discord.com/api/webhooks/1491838823355912363/8bR5yRHhC3nckDQXxROnw9klt6tMRhb1jNEafo8Wf4bmBzR2yw7lGmnR7TiqGyIYmrCc";
 
     @Override
+    //called when game initializes
     public void init() {
         // Listen for player chat events
         Events.on(PlayerChatEvent.class, event -> {
@@ -27,27 +28,7 @@ public class CabbageticMindustryPlugin extends Plugin{
 
         Log.info("Mindustry Discord Bridge for Cabbagetic Mindustry v8 Server Loaded!");
         Log.info("Plugin loaded. Special thanks to Anuken for the template!");
-    }
 
-    private void sendToDiscord(String username, String message) {
-        Http.post(webhookUrl)
-            .content("{\"content\": \"**" + username + "**: " + message + "\"}")
-            .header("Content-Type", "application/json")
-            .submit(result -> {
-                // You can log errors here if needed
-            });
-    }
-  
-    public static final float messageSpacing = 60f;
-
-    private ObjectSet<String> authorized = new ObjectSet<>();
-    private ObjectFloatMap<Player> messageTime = new ObjectFloatMap<>();
-    private String message = "[scarlet]You are not authorized to perform this action.";
-    private boolean authUnits = true;
-  
-    //called when game initializes
-    @Override
-    public void init(){
         //listen for a block selection event
         Events.on(BuildSelectEvent.class, event -> {
             if(!event.breaking && event.builder != null && event.builder.buildPlan() != null && event.builder.buildPlan().block == Blocks.thoriumReactor && event.builder.isPlayer()){
@@ -80,7 +61,40 @@ public class CabbageticMindustryPlugin extends Plugin{
             }
             return true;
         });
+
+        authorized = Core.settings.getJson("authorized-players", ObjectSet.class, String.class, ObjectSet::new);
+        message = Core.settings.getString("authorized-message", message);
+        authUnits = Core.settings.getBool("allow-unauthorized-units", true);
+
+        Vars.netServer.admins.addActionFilter(action -> {
+            if(action.player == null) return true;
+            if(action.player.admin || authorized.contains(action.player.usid()) ||
+                (authUnits && (action.type == ActionType.control || action.type == ActionType.command)) || //check if they can command units
+                (action.type == ActionType.control && action.unit == null) //make sure they can un-control units
+            ){
+                return true;
+            }else{
+                message(action.player);
+                return false;
+            }
+        });
     }
+
+    private void sendToDiscord(String username, String message) {
+        Http.post(webhookUrl)
+            .content("{\"content\": \"**" + username + "**: " + message + "\"}")
+            .header("Content-Type", "application/json")
+            .submit(result -> {
+                // You can log errors here if needed
+            });
+    }
+  
+    public static final float messageSpacing = 60f;
+
+    private ObjectSet<String> authorized = new ObjectSet<>();
+    private ObjectFloatMap<Player> messageTime = new ObjectFloatMap<>();
+    private String message = "[scarlet]You are not authorized to perform this action.";
+    private boolean authUnits = true;
 
     //register commands that run on the server
     @Override
@@ -165,26 +179,6 @@ public class CabbageticMindustryPlugin extends Plugin{
             other.sendMessage("[lightgray](whisper) " + player.name + ":[] " + args[1]);
         });
     }
-  
-    @Override
-    public void init(){
-        authorized = Core.settings.getJson("authorized-players", ObjectSet.class, String.class, ObjectSet::new);
-        message = Core.settings.getString("authorized-message", message);
-        authUnits = Core.settings.getBool("allow-unauthorized-units", true);
-
-        Vars.netServer.admins.addActionFilter(action -> {
-            if(action.player == null) return true;
-            if(action.player.admin || authorized.contains(action.player.usid()) ||
-                (authUnits && (action.type == ActionType.control || action.type == ActionType.command)) || //check if they can command units
-                (action.type == ActionType.control && action.unit == null) //make sure they can un-control units
-            ){
-                return true;
-            }else{
-                message(action.player);
-                return false;
-            }
-        });
-     }
 
     private void message(Player player){
         if(Time.time - messageTime.get(player, 0) >= messageSpacing){
