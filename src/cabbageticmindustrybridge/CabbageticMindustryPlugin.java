@@ -1,3 +1,12 @@
+/* * Cabbagetic Mindustry Bridge (v8)
+ * Developed by: Esterajisi (Cabbagetic / Cabbagetic-2-0)
+ * * Credits & Acknowledgements:
+ * - Base Template: MindustryPluginTemplate by Anuken
+ * - Logic Concepts: AuthorizePlugin by Anuken
+ * - Original Work: CabbageticMindustryPlugin
+ * * "Respect the code, credit the source."
+ */
+
 package cabbageticmindustrybridge;
 
 import arc.*;
