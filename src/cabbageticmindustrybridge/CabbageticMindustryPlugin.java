@@ -27,6 +27,8 @@ public class CabbageticMindustryPlugin extends Plugin{
     private ConfigData config;
     private Json json = new Json();
     private arc.files.Fi configFile;
+    private long lastThoriumAlert = 0;
+    private long startTime;
 
     //The Config Structure (Inside the main class)
     public static class ConfigData {
@@ -41,6 +43,8 @@ public class CabbageticMindustryPlugin extends Plugin{
     @Override
     //called when game initializes
     public void init() {
+        startTime = Time.millis();
+        sendToDiscord(":white_check_mark: **Server is Online!**");
         //Load or Create Config
         configFile = Core.settings.getDataDirectory().child("mods/CabbageticMindustryPluginConfig.json");
         if (!configFile.exists()) {
@@ -77,14 +81,17 @@ public class CabbageticMindustryPlugin extends Plugin{
 
         //listen for a block selection event - Thorium Alert from before (Optional)
         Events.on(BuildSelectEvent.class, event -> {
-            if(!event.breaking && event.builder != null && event.builder.buildPlan() != null && event.builder.buildPlan().block == Blocks.thoriumReactor && event.builder.isPlayer()){
-                //player is the unit controller
-                Player player = event.builder.getPlayer();
-                sendToDiscord(":warning: **" + player.name + "** is building a Thorium Reactor!");
-                //send a message to everyone saying that this player has begun building a reactor
-                Call.sendMessage("[scarlet]ALERT![] " + player.name + " has begun building a reactor at " + event.tile.x + ", " + event.tile.y);
+            if(!event.breaking && event.builder != null && event.builder.buildPlan().block == Blocks.thoriumReactor){
+                long now = Time.millis();
+                if(now - lastThoriumAlert > 1000 * 60 * 5){ // 5 minutes
+                    Player player = event.builder.getPlayer();
+                    sendToDiscord(":warning: **" + player.name + "** is building a Thorium Reactor!");
+                    Call.sendMessage("[scarlet]NUCLEAR ALERT![] " + player.name + " is building a reactor!");
+                    lastThoriumAlert = now;
+                }
             }
         });
+
 
         Log.info("Cabbagetic Plugin Loaded. Special thanks to Anuken for the template!");
 
@@ -93,7 +100,7 @@ public class CabbageticMindustryPlugin extends Plugin{
             String filteredText = text;
             for(String word : config.bannedWords){
                 // (?i) makes it case-insensitive
-                filteredText = filteredText.replaceAll("(?i)" + word, "#$!@");
+                filteredText = filteredText.replaceAll("(?i)" + word, "____");
             }
             return filteredText;
         });
@@ -108,7 +115,7 @@ public class CabbageticMindustryPlugin extends Plugin{
             return true;
         });
 
-        authorized = Core.settings.getJson("authorized-players", ObjectSet.class, String.class, ObjectSet::new);
+        deauthorized = Core.settings.getJson("deauthorized-list", ObjectSet.class, String.class, ObjectSet::new);
         message = Core.settings.getString("authorized-message", message);
         authUnits = Core.settings.getBool("allow-unauthorized-units", true);
 
@@ -228,6 +235,20 @@ public class CabbageticMindustryPlugin extends Plugin{
             //send the other player a message, using [lightgray] for gray text color and [] to reset color
             other.sendMessage("[lightgray](whisper) " + player.name + ":[] " + args[1]);
         });
+
+        handler.<Player>register("discord", "Get the Discord link.", (args, player) -> {
+            player.sendMessage("[sky]Join our Discord: [white]discord.gg/yourlink");
+        });
+
+        handler.<Player>register("rules", "Read server rules.", (args, player) -> {
+            player.sendMessage("[orange]RULES:\n1. No Griefing\n2. No Swearing\n3. Have Fun!");
+        });
+
+        handler.<Player>register("sos", "<reason...>", "Send emergency help to admins.", (args, player) -> {
+            sendToDiscord("🚨 **SOS from " + player.name + "**: " + args[0]);
+            player.sendMessage("[green]Admins have been notified!");
+        });
+        
     }
 
     private void message(Player player){
@@ -240,6 +261,6 @@ public class CabbageticMindustryPlugin extends Plugin{
     private void save(){
         Core.settings.put("authorized-message", message);
         Core.settings.put("allow-unauthorized-units", authUnits);
-        Core.settings.putJson("authorized-list", String.class, authorized);
+        Core.settings.putJson("deauthorized-list", String.class, deauthorized);
     }
 }
