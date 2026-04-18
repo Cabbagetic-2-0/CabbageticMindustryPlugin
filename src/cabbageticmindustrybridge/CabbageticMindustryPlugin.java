@@ -14,6 +14,7 @@ import arc.files.Fi;
 import arc.struct.*;
 import arc.util.*;
 import arc.util.serialization.*;
+import arc.util.serialization.JsonWriter.OutputType;
 import mindustry.*;
 import mindustry.content.*;
 import mindustry.game.EventType.*;
