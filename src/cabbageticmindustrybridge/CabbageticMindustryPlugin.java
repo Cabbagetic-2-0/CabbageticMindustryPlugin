@@ -13,7 +13,7 @@ import arc.*;
 import arc.files.Fi;
 import arc.struct.*;
 import arc.util.*;
-import arc.uitl.serialization.*;
+import arc.util.serialization.*;
 import mindustry.*;
 import mindustry.content.*;
 import mindustry.game.EventType.*;
@@ -59,7 +59,7 @@ public class CabbageticMindustryPlugin extends Plugin{
         Events.on(PlayerChatEvent.class, event -> {
             // Filter out commands (starting with /)
             if (!event.message.startsWith("/")) {
-                sendToDiscord(event.player.name, event.message);
+                sendToDiscord("**" + event.player.name + "**: " + event.message);
             }
         });
 
@@ -88,7 +88,7 @@ public class CabbageticMindustryPlugin extends Plugin{
         //Chat Filter (Using words from the JSON)
         Vars.netServer.admins.addChatFilter((player, text) -> {
             String filteredText = text;
-            for(String word : bannedWords){
+            for(String word : config.bannedWords){
                 // (?i) makes it case-insensitive
                 filteredText = filteredText.replaceAll("(?i)" + word, "#$!@");
             }
