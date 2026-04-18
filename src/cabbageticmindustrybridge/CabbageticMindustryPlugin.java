@@ -33,6 +33,7 @@ public class CabbageticMindustryPlugin extends Plugin{
         public String channelId = "00000000000000";
         public String webhookUrl = "REPLACE_ME_OR_LEAVE_EMPTY";
         public Seq<String> bannedWords = Seq.with("badword1", "badword2", "meanverb");
+        public ConfigData() {}
     }
     
     @Override
@@ -40,19 +41,14 @@ public class CabbageticMindustryPlugin extends Plugin{
     public void init() {
         //Load or Create Config
         configFile = Core.settings.getDataDirectory().child("mods/CabbageticMindustryPluginConfig.json");
-
         if (!configFile.exists()) {
             config = new ConfigData();
+        json.setOutputType(OutputType.json); 
             configFile.writeString(json.prettyPrint(config));
-            Log.info("Cabbagetic: Created default config file at config/mods/CabbageticMindustryPluginConfig.json");
+    
+            Log.info("Cabbagetic: Created default config with values.");
         } else {
-            try {
-                config = json.fromJson(ConfigData.class, configFile.readString());
-                Log.info("Cabbagetic: Config loaded successfully.");
-            } catch (Exception e) {
-                config = new ConfigData();
-                Log.err("Cabbagetic: Failed to read config! Using defaults.", e);
-            }
+            config = json.fromJson(ConfigData.class, configFile.readString());
         }
         
         // Listen for player chat events
