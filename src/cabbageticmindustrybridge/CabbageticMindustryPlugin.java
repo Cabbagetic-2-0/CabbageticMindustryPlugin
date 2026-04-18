@@ -12,6 +12,7 @@ package cabbageticmindustrybridge;
 import arc.*;
 import arc.struct.*;
 import arc.util.*;
+import arc.uitl.serialization.*;
 import mindustry.*;
 import mindustry.content.*;
 import mindustry.game.EventType.*;
@@ -21,12 +22,38 @@ import mindustry.net.Administration.*;
 import mindustry.world.blocks.storage.*;
 
 public class CabbageticMindustryPlugin extends Plugin{
-    // Replace this with your actual Discord Webhook URL
-    private final String webhookUrl = "https://discord.com/api/webhooks/1491838823355912363/8bR5yRHhC3nckDQXxROnw9klt6tMRhb1jNEafo8Wf4bmBzR2yw7lGmnR7TiqGyIYmrCc";
+    private ConfigData config;
+    private Json json = new Json();
+    private Fi configFile;
 
+    //The Config Structure (Inside the main class)
+    public static class ConfigData {
+        public String botToken = "REPLACE_ME";
+        public String channelId = "00000000000000";
+        public String webhookUrl = "REPLACE_ME_OR_LEAVE_EMPTY";
+        public Seq<String> bannedWords = Seq.with("badword1", "badword2", "meanverb");
+    }
+    
     @Override
     //called when game initializes
     public void init() {
+        //Load or Create Config
+        configFile = Core.settings.getDataDirectory().child("mods/CabbageticMindustryPluginConfig.json");
+
+        if (!configFile.exists()) {
+            config = new ConfigData();
+            configFile.writeString(json.prettyPrint(config));
+            Log.info("Cabbagetic: Created default config file at config/mods/CabbageticMindustryPluginConfig.json");
+        } else {
+            try {
+                config = json.fromJson(ConfigData.class, configFile.readString());
+                Log.info("Cabbagetic: Config loaded successfully.");
+            } catch (Exception e) {
+                config = new ConfigData();
+                Log.err("Cabbagetic: Failed to read config! Using defaults.", e);
+            }
+        }
+        
         // Listen for player chat events
         Events.on(PlayerChatEvent.class, event -> {
             // Filter out commands (starting with /)
@@ -35,8 +62,24 @@ public class CabbageticMindustryPlugin extends Plugin{
             }
         });
 
-        Log.info("Mindustry Discord Bridge for Cabbagetic Mindustry v8 Server Loaded!");
-        Log.info("Plugin loaded. Special thanks to Anuken for the template!");
+        //Event Listeners (Join/Leave/Commands)
+        Events.on(PlayerJoin.class, event -> {
+            sendToDiscord(":inbox_tray: **" + event.player.name + "** joined the server.");
+        });
+
+        Events.on(PlayerLeave.class, event -> {
+            sendToDiscord(":outbox_tray: **" + event.player.name + "** left the server.");
+        });
+
+        // Thorium Alert from before (Optional)
+        Events.on(BuildSelectEvent.class, event -> {
+            if(!event.breaking && event.builder != null && event.builder.buildPlan() != null && event.builder.buildPlan().block == Blocks.thoriumReactor && event.builder.isPlayer()){
+                Player player = event.builder.getPlayer();
+                sendToDiscord(":warning: **" + player.name + "** is building a Thorium Reactor!");
+            }
+        });
+
+        Log.info("Cabbagetic Plugin Loaded. Special thanks to Anuken for the template!");
 
         //listen for a block selection event
         Events.on(BuildSelectEvent.class, event -> {
@@ -49,14 +92,12 @@ public class CabbageticMindustryPlugin extends Plugin{
             }
         });
 
-            // CHAT FILTER: Multi-word Censor
-        String[] bannedWords = {"badword1", "badword2", "meanverb", "angryadjective"};
-
+        //Chat Filter (Using words from the JSON)
         Vars.netServer.admins.addChatFilter((player, text) -> {
             String filteredText = text;
             for(String word : bannedWords){
                 // (?i) makes it case-insensitive
-                filteredText = filteredText.replaceAll("(?i)" + word, "****");
+                filteredText = filteredText.replaceAll("(?i)" + word, "#$!@");
             }
             return filteredText;
         });
@@ -89,12 +130,16 @@ public class CabbageticMindustryPlugin extends Plugin{
         });
     }
 
-    private void sendToDiscord(String username, String message) {
-        Http.post(webhookUrl)
-            .content("{\"content\": \"**" + username + "**: " + message + "\"}")
+    private void sendToDiscord(String message) {
+        // Check if Webhook is set up
+        if(config.webhookUrl == null || config.webhookUrl.contains("REPLACE_ME")) return;
+        
+        // Use Mindustry's internal Http helper
+        Http.post(config.webhookUrl)
+            .content("{\"content\": \"" + message + "\"}")
             .header("Content-Type", "application/json")
             .submit(result -> {
-                // You can log errors here if needed
+                // This runs in the background to prevent game lag
             });
     }
   
