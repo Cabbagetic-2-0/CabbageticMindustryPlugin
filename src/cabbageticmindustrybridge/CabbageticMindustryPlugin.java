@@ -71,26 +71,18 @@ public class CabbageticMindustryPlugin extends Plugin{
             sendToDiscord(":outbox_tray: **" + event.player.name + "** left the server.");
         });
 
-        // Thorium Alert from before (Optional)
-        Events.on(BuildSelectEvent.class, event -> {
-            if(!event.breaking && event.builder != null && event.builder.buildPlan() != null && event.builder.buildPlan().block == Blocks.thoriumReactor && event.builder.isPlayer()){
-                Player player = event.builder.getPlayer();
-                sendToDiscord(":warning: **" + player.name + "** is building a Thorium Reactor!");
-            }
-        });
-
-        Log.info("Cabbagetic Plugin Loaded. Special thanks to Anuken for the template!");
-
-        //listen for a block selection event
+        //listen for a block selection event - Thorium Alert from before (Optional)
         Events.on(BuildSelectEvent.class, event -> {
             if(!event.breaking && event.builder != null && event.builder.buildPlan() != null && event.builder.buildPlan().block == Blocks.thoriumReactor && event.builder.isPlayer()){
                 //player is the unit controller
                 Player player = event.builder.getPlayer();
-
+                sendToDiscord(":warning: **" + player.name + "** is building a Thorium Reactor!");
                 //send a message to everyone saying that this player has begun building a reactor
                 Call.sendMessage("[scarlet]ALERT![] " + player.name + " has begun building a reactor at " + event.tile.x + ", " + event.tile.y);
             }
         });
+
+        Log.info("Cabbagetic Plugin Loaded. Special thanks to Anuken for the template!");
 
         //Chat Filter (Using words from the JSON)
         Vars.netServer.admins.addChatFilter((player, text) -> {
