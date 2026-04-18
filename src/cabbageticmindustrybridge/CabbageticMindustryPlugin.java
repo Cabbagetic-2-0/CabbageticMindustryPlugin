@@ -33,7 +33,8 @@ public class CabbageticMindustryPlugin extends Plugin{
         public String botToken = "REPLACE_ME";
         public String channelId = "00000000000000";
         public String webhookUrl = "REPLACE_ME_OR_LEAVE_EMPTY";
-        public Seq<String> bannedWords = Seq.with("badword1", "badword2", "meanverb");
+        public String[] bannedWords = {"badword1", "badword2", "meanverb"};
+        
         public ConfigData() {}
     }
     
@@ -44,10 +45,15 @@ public class CabbageticMindustryPlugin extends Plugin{
         configFile = Core.settings.getDataDirectory().child("mods/CabbageticMindustryPluginConfig.json");
         if (!configFile.exists()) {
             config = new ConfigData();
-        json.setOutputType(OutputType.json); 
-            configFile.writeString(json.prettyPrint(config));
-    
-            Log.info("Cabbagetic: Created default config with values.");
+        json.setOutputType(OutputType.json);
+        json.setUsePrototypes(false);
+                String result = json.prettyPrint(config);
+        if(result.equals("{}") || result.equals("")) {
+            result = "{\n  \"webhookUrl\": \"REPLACE_ME\",\n  \"bannedWords\": [\"badword1\", \"badword2\"]\n}";
+        }
+        
+        configFile.writeString(result);
+        Log.info("Cabbagetic: Config file initialized.");
         } else {
             config = json.fromJson(ConfigData.class, configFile.readString());
         }
