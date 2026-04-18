@@ -25,7 +25,7 @@ import mindustry.world.blocks.storage.*;
 public class CabbageticMindustryPlugin extends Plugin{
     private ConfigData config;
     private Json json = new Json();
-    private Fi configFile;
+    private arc.files.Fi configFile;
 
     //The Config Structure (Inside the main class)
     public static class ConfigData {
