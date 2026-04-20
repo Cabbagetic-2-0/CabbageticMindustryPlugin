@@ -116,21 +116,30 @@ public class CabbageticMindustryPlugin extends Plugin{
         });
 
         deauthorized = Core.settings.getJson("deauthorized-list", ObjectSet.class, String.class, ObjectSet::new);
-        message = Core.settings.getString("authorized-message", message);
-        authUnits = Core.settings.getBool("allow-unauthorized-units", true);
+        message = Core.settings.getString("authorized-message", "[scarlet]You are not authorized to perform this action.");
+        authUnits = Core.settings.getBool("allow-unauthorized-units", authUnits);
 
         Vars.netServer.admins.addActionFilter(action -> {
             if(action.player == null) return true;
-            if(action.player.admin || authorized.contains(action.player.usid()) ||
-                (authUnits && (action.type == ActionType.control || action.type == ActionType.command)) || //check if they can command units
-                (action.type == ActionType.control && action.unit == null) //make sure they can un-control units
-            ){
-                return true;
-            }else{
+            if(action.player.admin) return true;
+
+            // If the player IS in the deauthorized list
+            if(deauthorized.contains(action.player.usid())){
+                // If 'authUnits' is true, let them control/command units anyway
+                if(authUnits && (action.type == ActionType.control || action.type == ActionType.command)) return true;
+        
+                // Allow them to un-control a unit so they don't get stuck
+                if(action.type == ActionType.control && action.unit == null) return true;
+
+                // Otherwise, block everything else and send the "Not Authorized" message
                 message(action.player);
                 return false;
             }
+
+            return true; // Everyone else is allowed
         });
+        
+        
     }
 
     private void sendToDiscord(String message) {
@@ -148,7 +157,7 @@ public class CabbageticMindustryPlugin extends Plugin{
   
     public static final float messageSpacing = 60f;
 
-    private ObjectSet<String> authorized = new ObjectSet<>();
+    private ObjectSet<String> deauthorized = new ObjectSet<>();
     private ObjectFloatMap<Player> messageTime = new ObjectFloatMap<>();
     private String message = "[scarlet]You are not authorized to perform this action.";
     private boolean authUnits = true;
@@ -168,20 +177,20 @@ public class CabbageticMindustryPlugin extends Plugin{
             }
         });
 
-        handler.register("auth", "<add/remove> <player...>", "Authorize or unauthorize player by name or UUID.", arg -> {
+        handler.register("unauth", "<add/remove> <player...>", "Unauthorize or authorize player by name or UUID.", arg -> {
             Player player = Groups.player.find(p -> p.uuid().equals(arg[1]) || Strings.stripColors(p.name).equals(Strings.stripColors(arg[1])));
             if(arg[0].equals("add")){
                 if(player != null){
-                    authorized.add(player.usid());
-                    Log.info("Authorized: @", player.name);
+                    deauthorized.add(player.usid());
+                    Log.info("Un-authorized: @", player.name);
                     save();
                 }else{
-                    Log.err("Player not found. Note that they must be online for authorization to work.");
+                    Log.err("Player not found. Note that they must be online for unauthorization to work.");
                 }
             }else if(arg[0].equals("remove")){
                 if(player != null){
-                    authorized.remove(player.usid());
-                    Log.info("Un-authorized: @", player.name);
+                    deauthorized.remove(player.usid());
+                    Log.info("Authorized: @", player.name);
                     save();
                 }else{
                     Log.err("Player not found. Note that they must be online for authorization to work.");
@@ -261,6 +270,7 @@ public class CabbageticMindustryPlugin extends Plugin{
     private void save(){
         Core.settings.put("authorized-message", message);
         Core.settings.put("allow-unauthorized-units", authUnits);
-        Core.settings.putJson("deauthorized-list", String.class, deauthorized);
+        Core.settings.putJson("deauthorized-list", ObjectSet.class, deauthorized);
     }
+
 }
