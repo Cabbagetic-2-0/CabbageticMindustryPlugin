@@ -35,6 +35,7 @@ public class CabbageticMindustryPlugin extends Plugin{
         public String botToken = "REPLACE_ME";
         public String channelId = "00000000000000";
         public String webhookUrl = "REPLACE_ME_OR_LEAVE_EMPTY";
+        public String discordInvite = "discord.gg/yourlink";
         public String[] bannedWords = {"badword1", "badword2", "meanverb"};
         
         public ConfigData() {}
@@ -53,7 +54,7 @@ public class CabbageticMindustryPlugin extends Plugin{
         json.setUsePrototypes(false);
                 String result = json.prettyPrint(config);
         if(result.equals("{}") || result.equals("")) {
-            result = "{\n  \"webhookUrl\": \"REPLACE_ME\",\n  \"bannedWords\": [\"badword1\", \"badword2\"]\n}";
+            result = "{\n  \"webhookUrl\": \"REPLACE_ME\",\n  \"discordInvite\": \"discord.gg/yourlink\",\n  \"bannedWords\": [\"badword1\", \"badword2\"]\n}";
         }
         
         configFile.writeString(result);
@@ -246,7 +247,7 @@ public class CabbageticMindustryPlugin extends Plugin{
         });
 
         handler.<Player>register("discord", "Get the Discord link.", (args, player) -> {
-            player.sendMessage("[sky]Join our Discord: [white]discord.gg/yourlink");
+            player.sendMessage("[sky]Join our Discord: [white]" + config.discordInvite);
         });
 
         handler.<Player>register("rules", "Read server rules.", (args, player) -> {
