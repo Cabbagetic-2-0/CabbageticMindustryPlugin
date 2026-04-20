@@ -61,7 +61,6 @@ public class CabbageticMindustryPlugin extends Plugin{
     //called when game initializes
     public void init() {
         startTime = Time.millis();
-        sendToDiscord(":white_check_mark: **Server is Online!**");
         //Load or Create Config
         configFile = Core.settings.getDataDirectory().child("mods/CabbageticMindustryPluginConfig.json");
         if (!configFile.exists()) {
@@ -78,6 +77,8 @@ public class CabbageticMindustryPlugin extends Plugin{
         } else {
             config = json.fromJson(ConfigData.class, configFile.readString());
         }
+
+        sendToDiscord(":white_check_mark: **Server is Online!**");
         
         // Listen for player chat events
         Events.on(PlayerChatEvent.class, event -> {
