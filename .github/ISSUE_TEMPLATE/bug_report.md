@@ -24,16 +24,14 @@ A clear and concise description of what you expected to happen.
 **Screenshots**
 If applicable, add screenshots to help explain your problem.
 
-**Desktop (please complete the following information):**
- - OS: [e.g. iOS]
- - Browser [e.g. chrome, safari]
- - Version [e.g. 22]
+**Mindustry Server (please complete the following information)**
+ - ServerOS+Version: [e.g. Windows+10+pro, Linux-Ubuntu+24.04.4+LTS, Android+10+using [termux or any other third party tools] ]
+ - ServerVersion [e.g. v157, v157.4]
+ - Are_you_using_a_hosting_service: [yes/no]
 
-**Smartphone (please complete the following information):**
- - Device: [e.g. iPhone6]
- - OS: [e.g. iOS8.1]
- - Browser [e.g. stock browser, safari]
- - Version [e.g. 22]
+**Java Runtime Environment (please complete the following information):**
+ - Version: [e.g. jdk-21, jdk-25]
+ - Distribution: [Oracle, Temurin, Microsoft]
 
 **Additional context**
 Add any other context about the problem here.
