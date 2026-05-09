@@ -28,7 +28,8 @@ package cabbageticmindustrybridge;
 import arc.*;
 import arc.files.Fi;
 import arc.struct.*;
-import arc.struct.ObjectLongMap;
+import arc.struct.ObjectMap.*;
+import arc.struct.ObjectMap;
 import arc.util.*;
 import arc.util.serialization.*;
 import arc.util.serialization.JsonWriter.OutputType;
@@ -37,6 +38,7 @@ import mindustry.content.*;
 import mindustry.game.*;
 import mindustry.game.Gamemode;
 import mindustry.game.EventType.*;
+import mindustry.game.Team;
 import mindustry.gen.*;
 import mindustry.mod.*;
 import mindustry.net.Administration.*;
@@ -191,7 +193,7 @@ public class CabbageticMindustryPlugin extends Plugin{
     private String message = "[scarlet]You are not authorized to perform this action.";
     private boolean authUnits = true;
     private ObjectSet<String> opAdmins = new ObjectSet<>();
-    private ObjectLongMap<String> goCooldowns = new ObjectLongMap<>();
+    private ObjectMap<String, Long> goCooldowns = new ObjectMap<>();
 
     //register commands that run on the server
     @Override
@@ -336,7 +338,7 @@ public class CabbageticMindustryPlugin extends Plugin{
                     Vars.net.closeServer();
                     Vars.logic.reset();
                     Vars.world.loadMap(found);
-                    Vars.state.rules.mode = Gamemode.attack;
+                    Vars.state.rules.gameMode = Gamemode.attack;
                     Vars.netServer.openServer();
                 });
             } else {
