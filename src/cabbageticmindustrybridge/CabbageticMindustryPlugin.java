@@ -337,7 +337,7 @@ public class CabbageticMindustryPlugin extends Plugin{
                     Vars.net.closeServer();
                     Vars.logic.reset();
                     Vars.world.loadMap(found);
-                    Vars.state.rules = attackMode;
+                    Vars.state.rules.attackMode;
                     Vars.netServer.openServer();
                 });
             } else {
