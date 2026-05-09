@@ -33,10 +33,12 @@ import arc.util.serialization.*;
 import arc.util.serialization.JsonWriter.OutputType;
 import mindustry.*;
 import mindustry.content.*;
+import mindustry.game.*;
 import mindustry.game.EventType.*;
 import mindustry.gen.*;
 import mindustry.mod.*;
 import mindustry.net.Administration.*;
+import mindustry.type.*;
 import mindustry.world.blocks.storage.*;
 
 public class CabbageticMindustryPlugin extends Plugin{
