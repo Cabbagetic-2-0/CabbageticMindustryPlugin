@@ -28,18 +28,19 @@ package cabbageticmindustrybridge;
 import arc.*;
 import arc.files.Fi;
 import arc.struct.*;
+import arc.struct.ObjectLongMap;
 import arc.util.*;
 import arc.util.serialization.*;
 import arc.util.serialization.JsonWriter.OutputType;
 import mindustry.*;
 import mindustry.content.*;
 import mindustry.game.*;
+import mindustry.game.Gamemode;
 import mindustry.game.EventType.*;
 import mindustry.gen.*;
 import mindustry.mod.*;
 import mindustry.net.Administration.*;
 import mindustry.type.*;
-import mindustry.type.Gamemode;
 import mindustry.world.blocks.storage.*;
 
 public class CabbageticMindustryPlugin extends Plugin{
@@ -335,7 +336,7 @@ public class CabbageticMindustryPlugin extends Plugin{
                     Vars.net.closeServer();
                     Vars.logic.reset();
                     Vars.world.loadMap(found);
-                    Vars.state.rules.gamemode = Gamemode.attack;
+                    Vars.state.rules.mode = Gamemode.attack;
                     Vars.netServer.openServer();
                 });
             } else {
