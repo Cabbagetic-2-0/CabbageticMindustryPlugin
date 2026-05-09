@@ -1,5 +1,5 @@
 # Java CI Status of this repository
-[![Java CI](https://github.com/Cabbagetic-2-0/CabbageticMindustryPlugin/actions/workflows/gradle.yml/badge.svg?branch=master)](https://github.com/Cabbagetic-2-0/CabbageticMindustryPlugin/actions/workflows/gradle.yml)
+[![Java CI](https://github.com/Cabbagetic-2-0/CabbageticMindustryPlugin/actions/workflows/gradle.yml/badge.svg)](https://github.com/Cabbagetic-2-0/CabbageticMindustryPlugin/actions/workflows/gradle.yml)
 
 ### Setup
 
