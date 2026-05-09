@@ -2,6 +2,6 @@
   "name": "CabbageticMindustryPlugin",
   "author": "Esterajisi",
   "main": "cabbageticmindustrybridge.CabbageticMindustryPlugin",
-  "description": "A customised plugin for the Cabbagetic 2.0 mindustry server with some mixed features (this plugin uses most of the codes from the mindustry developer's repositories [MindustryPluginT[...]",
-  "version": 1.3.5
+  "description": "A customised plugin for the Cabbagetic 2.0 mindustry server with some mixed features (this plugin uses most of the codes from the mindustry developer's repositories [MindustryPluginTemplate](https://github.com/Anuken/MindustryPluginTemplate) and [AuthorizePlugin](https://github.com/Anuken/AuthorizePlugin)",
+  "version": "1.3.5"
 }
