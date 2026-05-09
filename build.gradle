@@ -55,6 +55,10 @@ dependencies{
 
     compileOnly useLatest ? "Anuken:MindustryBuilds:latest" : "Anuken:Mindustry:$mindustryVersion"
 
+    implementation("net.dv8tion.jda:JDA:5.0.0-beta.20") {
+        exclude module: 'opus-java' 
+    }
+
     annotationProcessor "Anuken:jabel:v1.0.0"
 }
 
