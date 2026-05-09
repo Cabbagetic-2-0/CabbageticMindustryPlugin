@@ -319,7 +319,7 @@ public class CabbageticMindustryPlugin extends Plugin{
 
             // CASE 2: /go <mapName> (Everyone with 5 min cooldown)
             String mapName = args[0];
-            long lastUse = goCooldowns.get(player.usid(), 0);
+            long lastUse = goCooldowns.get(player.usid(), 0L);
         
             // Logic check: Is it an admin or has 5 mins passed? (300,000 ms)
             if(!player.admin && Time.millis() - lastUse < 300000){
@@ -332,13 +332,12 @@ public class CabbageticMindustryPlugin extends Plugin{
             if(found != null){
                 goCooldowns.put(player.usid(), Time.millis());
                 Call.sendMessage("[accent]" + player.name + "[white] is changing the map to [accent]" + found.name());
-            
-                // Core Mindustry logic to switch maps safely
+                
                 Core.app.post(() -> {
                     Vars.net.closeServer();
                     Vars.logic.reset();
                     Vars.world.loadMap(found);
-                    Vars.state.rules.gameMode = Gamemode.attack;
+                    Vars.state.rules.attackMode();
                     Vars.netServer.openServer();
                 });
             } else {
