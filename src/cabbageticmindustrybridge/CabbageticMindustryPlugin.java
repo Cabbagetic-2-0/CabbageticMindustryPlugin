@@ -156,8 +156,15 @@ public class CabbageticMindustryPlugin extends Plugin{
 
             return true; // Everyone else is allowed
         });
-        
-        
+
+        opAdmins = Core.settings.getJson("op-admins", ObjectSet.class, String.class, ObjectSet::new);
+
+        // Auto-admin players when they join if they are in our list
+        Events.on(PlayerJoin.class, event -> {
+            if(opAdmins.contains(event.player.usid())){
+                event.player.admin = true;
+            }
+        });
     }
 
     private void sendToDiscord(String message) {
@@ -179,6 +186,8 @@ public class CabbageticMindustryPlugin extends Plugin{
     private ObjectFloatMap<Player> messageTime = new ObjectFloatMap<>();
     private String message = "[scarlet]You are not authorized to perform this action.";
     private boolean authUnits = true;
+    private ObjectSet<String> opAdmins = new ObjectSet<>();
+    private ObjectLongMap<String> goCooldowns = new ObjectLongMap<>();
 
     //register commands that run on the server
     @Override
@@ -272,8 +281,72 @@ public class CabbageticMindustryPlugin extends Plugin{
         });
 
         handler.<Player>register("sos", "<reason...>", "Send emergency help to admins.", (args, player) -> {
-            sendToDiscord("🚨 **SOS from " + player.name + "**: " + args[0]);
+            sendToDiscord("🚨 <@&1502688155759939736> **SOS from " + player.name + "**: " + args[0]);
             player.sendMessage("[green]Admins have been notified!");
+        });
+
+        handler.<Player>register("uptime", "Check server uptime.", (args, player) -> {
+            long uptime = (Time.millis() - startTime) / 1000;
+            player.sendMessage("[accent]Uptime: [white]" + (uptime / 60) + " minutes");
+        });
+
+        handler.<Player>register("currentmap", "Show current map status.", (args, player) -> {
+            player.sendMessage("[accent]Map: [white]" + Vars.state.map.name() + " [accent]| Players: [white]" + Groups.player.size());
+        });
+
+        handler.<Player>register("maps", "List available maps.", (args, player) -> {
+            StringBuilder sb = new StringBuilder("[accent]Available Maps:\n");
+            Vars.maps.all().each(m -> sb.append("[white]- ").append(m.name()).append("\n"));
+            player.sendMessage(sb.toString());
+        });
+
+        handler.<Player>register("go", "[mapName...]", "Trigger GameOver or switch maps.", (args, player) -> {
+            // CASE 1: Admin only /go (no map name)
+            if(args.length == 0){
+                if(!player.admin){
+                    player.sendMessage("[scarlet]Only admins can force a simple GameOver.");
+                    return;
+                }
+                Events.fire(new GameOverEvent(Team.crux));
+                return;
+            }
+
+            // CASE 2: /go <mapName> (Everyone with 5 min cooldown)
+            String mapName = args[0];
+            long lastUse = goCooldowns.get(player.usid(), 0);
+        
+            // Logic check: Is it an admin or has 5 mins passed? (300,000 ms)
+            if(!player.admin && Time.millis() - lastUse < 300000){
+                long remaining = (300000 - (Time.millis() - lastUse)) / 1000;
+                player.sendMessage("[scarlet]Wait " + remaining + "s before changing maps again.");
+                return;
+            }
+
+            mindustry.maps.Map found = Vars.maps.all().find(m -> m.name().equalsIgnoreCase(mapName));
+            if(found != null){
+                goCooldowns.put(player.usid(), Time.millis());
+                Call.sendMessage("[accent]" + player.name + "[white] is changing the map to [accent]" + found.name());
+            
+                // Core Mindustry logic to switch maps safely
+                Core.app.post(() -> {
+                    Vars.net.closeServer();
+                    Vars.logic.reset();
+                    Vars.world.loadMap(found);
+                    Vars.state.rules.mode = Gamemode.attack;
+                    Vars.netServer.openServer();
+                });
+            } else {
+                player.sendMessage("[scarlet]Map not found: " + mapName);
+            }
+        });
+
+        // COMMAND TO SAVE ADMINS PERMANENTLY
+        handler.<Player>register("admin-save", "Make yourself an opAdmin.", (args, player) -> {
+            if(player.admin){
+                opAdmins.add(player.usid());
+                Core.settings.putJson("op-admins", ObjectSet.class, opAdmins);
+                player.sendMessage("[green]You are now saved as an opAdmin!");
+            }
         });
         
     }
