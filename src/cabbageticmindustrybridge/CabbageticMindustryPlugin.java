@@ -46,7 +46,7 @@ import mindustry.type.*;
 import mindustry.world.blocks.storage.*;
 
 public class CabbageticMindustryPlugin extends Plugin{
-    private ConfigData config;
+    private Config config;
     private Json json = new Json();
     private arc.files.Fi configFile;
     private long lastThoriumAlert = 0;
@@ -54,11 +54,11 @@ public class CabbageticMindustryPlugin extends Plugin{
 
     //The Config Structure (Inside the main class)
     public static class ConfigData {
-        public String botToken = "REPLACE_ME";
-        public String channelId = "00000000000000";
+        public String botToken = "REPLACE_ME_OR_LEAVE_EMPTY";
         public String webhookUrl = "REPLACE_ME_OR_LEAVE_EMPTY";
-        public String discordInvite = "discord.gg/yourlink";
+        public String discordInvite = "YOUR_DISCORD_INVITE_HERE";
         public String[] bannedWords = {"badword1", "badword2", "meanverb"};
+        public ObjectSet<String> opAdmins = new ObjectSet<>();
         
         public ConfigData() {}
     }
@@ -75,7 +75,7 @@ public class CabbageticMindustryPlugin extends Plugin{
         json.setUsePrototypes(false);
                 String result = json.prettyPrint(config);
         if(result.equals("{}") || result.equals("")) {
-            result = "{\n  \"webhookUrl\": \"REPLACE_ME\",\n  \"discordInvite\": \"discord.gg/yourlink\",\n  \"bannedWords\": [\"badword1\", \"badword2\"]\n}";
+            result = "{\n  \"webhookUrl\": \"REPLACE_ME\",\n  \"discordInvite\": \"YOUR_DISCORD_INVITE_HERE\",\n  \"bannedWords\": [\"badword1\", \"badword2\"]\n}";
         }
         
         configFile.writeString(result);
@@ -97,6 +97,11 @@ public class CabbageticMindustryPlugin extends Plugin{
         //Event Listeners (Join/Leave/Commands)
         Events.on(PlayerJoin.class, event -> {
             sendToDiscord(":inbox_tray: **" + event.player.name + "** joined the server.");
+            String playerUuid = event.player.usid();
+            if(opAdmins.contains(PlayerUuid)){
+                event.player.admin = true;
+                Log.info("Auto-opAdmined user: " + event.player.name);
+            }
         });
 
         Events.on(PlayerLeave.class, event -> {
@@ -115,8 +120,7 @@ public class CabbageticMindustryPlugin extends Plugin{
                 }
             }
         });
-
-
+        
         Log.info("Cabbagetic Plugin Loaded. Special thanks to Anuken for the template!");
 
         //Chat Filter (Using words from the JSON)
@@ -187,7 +191,7 @@ public class CabbageticMindustryPlugin extends Plugin{
     }
   
     public static final float messageSpacing = 60f;
-
+    
     private ObjectSet<String> deauthorized = new ObjectSet<>();
     private ObjectFloatMap<Player> messageTime = new ObjectFloatMap<>();
     private String message = "[scarlet]You are not authorized to perform this action.";
@@ -252,6 +256,7 @@ public class CabbageticMindustryPlugin extends Plugin{
                 Log.info("Current value: @", authUnits ? "yes" : "no");
             }
         });
+        
     }
 
     //register commands that player can invoke in-game
@@ -334,23 +339,57 @@ public class CabbageticMindustryPlugin extends Plugin{
                 Call.sendMessage("[accent]" + player.name + "[white] is changing the map to [accent]" + found.name());
                 
                 Core.app.post(() -> {
-                    Vars.net.closeServer();
+                    Call.sendMessage("[accent]Loading new map: [white]" + found.name());
                     Vars.logic.reset();
                     Vars.world.loadMap(found);
                     Vars.state.rules.attackMode = true;
-                    Vars.netServer.openServer();
-                });
+                    Vars.logic.play();
+                    for(Player p : Groups.player){
+                        Vars.netServer.sendWorldData(p);
+                    }
             } else {
                 player.sendMessage("[scarlet]Map not found: " + mapName);
             }
         });
 
         // COMMAND TO SAVE ADMINS PERMANENTLY
-        handler.<Player>register("admin-save", "Make yourself an opAdmin.", (args, player) -> {
+        handler.<Player>register("admin-save", "Save your UUID as an opAdmin.", (args, player) -> {
             if(player.admin){
-                opAdmins.add(player.usid());
+                config.opAdmins.add(player.usid());
+                saveConfig();
+                player.sendMessage("[green]UUID saved to Config JSON!");
+            }
+        });
+
+        handler.<Player>register("admin-remove", "<UUID/Name>", "Remove opAdmin.", (args, player) -> {
+            if(!player.admin){
+                player.sendMessage("[scarlet]Only admins can use this command.");
+                return;
+            }
+
+            String target = args[0];
+            if(Config.opAdmins.remove(target)) {
+                saveConfig();
+                player.sendMessage("[yellow]UUID removed from Config.");
+            }
+    
+            // Check if we are removing by USID directly
+            if(opAdmins.contains(target)){
+                opAdmins.remove(target);
                 Core.settings.putJson("op-admins", ObjectSet.class, opAdmins);
-                player.sendMessage("[green]You are now saved as an opAdmin!");
+                player.sendMessage("[green]Removed USID " + target + " from opAdmins.");
+                return;
+            }
+
+            // Otherwise, try to find a player online with that name
+            Player found = Groups.player.find(p -> p.name.equalsIgnoreCase(target));
+            if(found != null){
+                opAdmins.remove(found.usid());
+                found.admin = false; // Take away their current powers
+                Core.settings.putJson("op-admins", ObjectSet.class, opAdmins);
+                player.sendMessage("[green]Removed " + found.name + " from opAdmins.");
+            } else {
+                player.sendMessage("[scarlet]Player or USID not found. Use their full name or USID.");
             }
         });
         
@@ -368,5 +407,11 @@ public class CabbageticMindustryPlugin extends Plugin{
         Core.settings.put("allow-unauthorized-units", authUnits);
         Core.settings.putJson("deauthorized-list", ObjectSet.class, deauthorized);
     }
+
+    private void saveConfig() {
+        Fi configFile = handler.getConfig().child("CabbageticMindustryPluginConfig.json");
+        configFile.writeString(json.prettyPrint(config));
+    }
+    
 
 }
