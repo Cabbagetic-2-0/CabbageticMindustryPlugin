@@ -46,7 +46,7 @@ import mindustry.type.*;
 import mindustry.world.blocks.storage.*;
 
 public class CabbageticMindustryPlugin extends Plugin{
-    private Config config;
+    private ConfigData config;
     private Json json = new Json();
     private arc.files.Fi configFile;
     private long lastThoriumAlert = 0;
@@ -98,7 +98,7 @@ public class CabbageticMindustryPlugin extends Plugin{
         Events.on(PlayerJoin.class, event -> {
             sendToDiscord(":inbox_tray: **" + event.player.name + "** joined the server.");
             String playerUuid = event.player.usid();
-            if(opAdmins.contains(PlayerUuid)){
+            if(opAdmins.contains(playerUuid)){
                 event.player.admin = true;
                 Log.info("Auto-opAdmined user: " + event.player.name);
             }
@@ -369,7 +369,7 @@ public class CabbageticMindustryPlugin extends Plugin{
             }
 
             String target = args[0];
-            if(Config.opAdmins.remove(target)) {
+            if(opAdmins.remove(target)) {
                 saveConfig();
                 player.sendMessage("[yellow]UUID removed from Config.");
             }
@@ -410,7 +410,6 @@ public class CabbageticMindustryPlugin extends Plugin{
     }
 
     private void saveConfig() {
-        Fi configFile = handler.getConfig().child("CabbageticMindustryPluginConfig.json");
         configFile.writeString(json.prettyPrint(config));
     }
     
