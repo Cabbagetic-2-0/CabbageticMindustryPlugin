@@ -347,6 +347,7 @@ public class CabbageticMindustryPlugin extends Plugin{
                     for(Player p : Groups.player){
                         Vars.netServer.sendWorldData(p);
                     }
+            )};
             } else {
                 player.sendMessage("[scarlet]Map not found: " + mapName);
             }
