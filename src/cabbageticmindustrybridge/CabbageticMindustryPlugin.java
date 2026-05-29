@@ -1,20 +1,16 @@
 /* * Cabbagetic Mindustry Bridge (v8)
- * Developed by: Esterajisi (Cabbagetic / Cabbagetic-2-0)
+ * Developed by: Esterajisi (Cabbagetic-Classic/ Cabbagetic)
  * * Credits & Acknowledgements:
  * - Base Template: MindustryPluginTemplate by Anuken
  * - Logic Concepts: AuthorizePlugin by Anuken
  * - Original Work: CabbageticMindustryPlugin
  * * "Respect the code, credit the source."
  * 
- *
- *
- * Copyright 2026 Esterajisi, Cabbagetic-2-0, Cabbagetic
- *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *    http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -28,31 +24,38 @@ package cabbageticmindustrybridge;
 import arc.*;
 import arc.files.Fi;
 import arc.struct.*;
-import arc.struct.ObjectMap.*;
-import arc.struct.ObjectMap;
 import arc.util.*;
 import arc.util.serialization.*;
 import arc.util.serialization.JsonWriter.OutputType;
 import mindustry.*;
 import mindustry.content.*;
 import mindustry.game.*;
-import mindustry.game.Gamemode;
 import mindustry.game.EventType.*;
-import mindustry.game.Team;
 import mindustry.gen.*;
 import mindustry.mod.*;
 import mindustry.net.Administration.*;
 import mindustry.type.*;
 import mindustry.world.blocks.storage.*;
+import mindustry.game.Team;
+import mindustry.game.Gamemode;
+import arc.struct.ObjectMap.*;
+import arc.struct.ObjectMap;
 
-public class CabbageticMindustryPlugin extends Plugin{
+public class CabbageticMindustryPlugin extends Plugin {
     private ConfigData config;
     private Json json = new Json();
     private arc.files.Fi configFile;
     private long lastThoriumAlert = 0;
     private long startTime;
+    
+    public static final float messageSpacing = 60f;
+    private ObjectSet<String> deauthorized = new ObjectSet<>();
+    private ObjectFloatMap<Player> messageTime = new ObjectFloatMap<>();
+    private String message = "[scarlet]You are not authorized to perform this action.";
+    private boolean authUnits = true;
+    private ObjectMap<String, Long> goCooldowns = new ObjectMap<>();
 
-    //The Config Structure (Inside the main class)
+    // Complete tracking structure unified inside Config
     public static class ConfigData {
         public String botToken = "REPLACE_ME_OR_LEAVE_EMPTY";
         public String webhookUrl = "REPLACE_ME_OR_LEAVE_EMPTY";
@@ -64,43 +67,46 @@ public class CabbageticMindustryPlugin extends Plugin{
     }
     
     @Override
-    //called when game initializes
     public void init() {
         startTime = Time.millis();
-        //Load or Create Config
+        
+        // Load Config directly from JSON file
         configFile = Core.settings.getDataDirectory().child("mods/CabbageticMindustryPluginConfig.json");
         if (!configFile.exists()) {
             config = new ConfigData();
-        json.setOutputType(OutputType.json);
-        json.setUsePrototypes(false);
-                String result = json.prettyPrint(config);
-        if(result.equals("{}") || result.equals("")) {
-            result = "{\n  \"webhookUrl\": \"REPLACE_ME\",\n  \"discordInvite\": \"YOUR_DISCORD_INVITE_HERE\",\n  \"bannedWords\": [\"badword1\", \"badword2\"]\n}";
-        }
-        
-        configFile.writeString(result);
-        Log.info("Cabbagetic: Config file initialized.");
+            json.setOutputType(OutputType.json);
+            json.setUsePrototypes(false);
+            String result = json.prettyPrint(config);
+            if(result.equals("{}") || result.equals("")) {
+                result = "{\n  \"webhookUrl\": \"REPLACE_ME\",\n  \"discordInvite\": \"YOUR_DISCORD_INVITE_HERE\",\n  \"bannedWords\": [\"badword1\", \"badword2\"],\n  \"opAdmins\": []\n}";
+            }
+            configFile.writeString(result);
+            Log.info("Cabbagetic: Config file initialized.");
         } else {
             config = json.fromJson(ConfigData.class, configFile.readString());
+            if (config.opAdmins == null) {
+                config.opAdmins = new ObjectSet<>();
+            }
         }
 
         sendToDiscord(":white_check_mark: **Server is Online!**");
         
-        // Listen for player chat events
+        // Chat Logging Event
         Events.on(PlayerChatEvent.class, event -> {
-            // Filter out commands (starting with /)
             if (!event.message.startsWith("/")) {
                 sendToDiscord("**" + event.player.name + "**: " + event.message);
             }
         });
 
-        //Event Listeners (Join/Leave/Commands)
+        // Safe Persistent Join Listener
         Events.on(PlayerJoin.class, event -> {
             sendToDiscord(":inbox_tray: **" + event.player.name + "** joined the server.");
             String playerUuid = event.player.usid();
-            if(opAdmins.contains(playerUuid)){
+            
+            // Checking the single source of truth: our Config file's map
+            if(config.opAdmins.contains(playerUuid)){
                 event.player.admin = true;
-                Log.info("Auto-opAdmined user: " + event.player.name);
+                Log.info("Auto-opAdmined persistent user: " + event.player.name);
             }
         });
 
@@ -108,41 +114,39 @@ public class CabbageticMindustryPlugin extends Plugin{
             sendToDiscord(":outbox_tray: **" + event.player.name + "** left the server.");
         });
 
-        //listen for a block selection event - Thorium Alert from before (Optional)
+        // Thorium Alert Monitor
         Events.on(BuildSelectEvent.class, event -> {
             if(!event.breaking && event.builder != null && event.builder.buildPlan().block == Blocks.thoriumReactor){
                 long now = Time.millis();
-                if(now - lastThoriumAlert > 1000 * 60 * 5){ // 5 minutes
+                if(now - lastThoriumAlert > 1000 * 60 * 5){
                     Player player = event.builder.getPlayer();
-                    sendToDiscord(":warning: **" + player.name + "** is building a Thorium Reactor!");
-                    Call.sendMessage("[scarlet]NUCLEAR ALERT![] " + player.name + " is building a reactor!");
+                    if(player != null) {
+                        sendToDiscord(":warning: **" + player.name + "** is building a Thorium Reactor!");
+                        Call.sendMessage("[scarlet]NUCLEAR ALERT![] " + player.name + " is building a reactor!");
+                    }
                     lastThoriumAlert = now;
                 }
             }
         });
         
-        Log.info("Cabbagetic Plugin Loaded. Special thanks to Anuken for the template!");
-
-        //Chat Filter (Using words from the JSON)
+        // Case-insensitive Filter Rules
         Vars.netServer.admins.addChatFilter((player, text) -> {
             String filteredText = text;
             for(String word : config.bannedWords){
-                // (?i) makes it case-insensitive
                 filteredText = filteredText.replaceAll("(?i)" + word, "____");
             }
             return filteredText;
         });
 
-        //add an action filter for preventing players from doing certain things
         Vars.netServer.admins.addActionFilter(action -> {
-            //random example: prevent blast compound depositing
             if(action.type == ActionType.depositItem && action.item == Items.blastCompound && action.tile.block() instanceof CoreBlock){
-                action.player.sendMessage("[pink]Filter:[] Blast compound cannot be put in the core!");
+                if(action.player != null) action.player.sendMessage("[pink]Filter:[] Blast compound cannot be put in the core!");
                 return false;
             }
             return true;
         });
 
+        // Fallbacks for default settings profile
         deauthorized = Core.settings.getJson("deauthorized-list", ObjectSet.class, String.class, ObjectSet::new);
         message = Core.settings.getString("authorized-message", "[scarlet]You are not authorized to perform this action.");
         authUnits = Core.settings.getBool("allow-unauthorized-units", authUnits);
@@ -151,62 +155,33 @@ public class CabbageticMindustryPlugin extends Plugin{
             if(action.player == null) return true;
             if(action.player.admin) return true;
 
-            // If the player IS in the deauthorized list
             if(deauthorized.contains(action.player.usid())){
-                // If 'authUnits' is true, let them control/command units anyway
                 if(authUnits && (action.type == ActionType.control || action.type == ActionType.command)) return true;
-        
-                // Allow them to un-control a unit so they don't get stuck
                 if(action.type == ActionType.control && action.unit == null) return true;
 
-                // Otherwise, block everything else and send the "Not Authorized" message
                 message(action.player);
                 return false;
             }
-
-            return true; // Everyone else is allowed
+            return true;
         });
-
-        opAdmins = Core.settings.getJson("op-admins", ObjectSet.class, String.class, ObjectSet::new);
-
-        // Auto-admin players when they join if they are in our list
-        Events.on(PlayerJoin.class, event -> {
-            if(opAdmins.contains(event.player.usid())){
-                event.player.admin = true;
-            }
-        });
+        
+        Log.info("Cabbagetic Plugin Loaded Successfully. Special thanks to Anuken for the template!");
     }
 
     private void sendToDiscord(String message) {
-        // Check if Webhook is set up
         if(config.webhookUrl == null || config.webhookUrl.contains("REPLACE_ME")) return;
         
-        // Use Mindustry's internal Http helper
         Http.post(config.webhookUrl)
             .content("{\"content\": \"" + message + "\"}")
             .header("Content-Type", "application/json")
-            .submit(result -> {
-                // This runs in the background to prevent game lag
-            });
+            .submit(result -> {});
     }
-  
-    public static final float messageSpacing = 60f;
-    
-    private ObjectSet<String> deauthorized = new ObjectSet<>();
-    private ObjectFloatMap<Player> messageTime = new ObjectFloatMap<>();
-    private String message = "[scarlet]You are not authorized to perform this action.";
-    private boolean authUnits = true;
-    private ObjectSet<String> opAdmins = new ObjectSet<>();
-    private ObjectMap<String, Long> goCooldowns = new ObjectMap<>();
 
-    //register commands that run on the server
     @Override
     public void registerServerCommands(CommandHandler handler){
         handler.register("reactors", "List all thorium reactors in the map.", args -> {
             for(int x = 0; x < Vars.world.width(); x++){
                 for(int y = 0; y < Vars.world.height(); y++){
-                    //loop through and log all found reactors
-                    //make sure to only log reactor centers
                     if(Vars.world.tile(x, y).block() == Blocks.thoriumReactor && Vars.world.tile(x, y).isCenter()){
                         Log.info("Reactor at @, @", x, y);
                     }
@@ -222,7 +197,7 @@ public class CabbageticMindustryPlugin extends Plugin{
                     Log.info("Un-authorized: @", player.name);
                     save();
                 }else{
-                    Log.err("Player not found. Note that they must be online for unauthorization to work.");
+                    Log.err("Player not found.");
                 }
             }else if(arg[0].equals("remove")){
                 if(player != null){
@@ -230,7 +205,7 @@ public class CabbageticMindustryPlugin extends Plugin{
                     Log.info("Authorized: @", player.name);
                     save();
                 }else{
-                    Log.err("Player not found. Note that they must be online for authorization to work.");
+                    Log.err("Player not found.");
                 }
             }else{
                 Log.err("Incorrect usage. First argument must be 'add' or 'remove'.");
@@ -256,15 +231,11 @@ public class CabbageticMindustryPlugin extends Plugin{
                 Log.info("Current value: @", authUnits ? "yes" : "no");
             }
         });
-        
     }
 
-    //register commands that player can invoke in-game
     @Override
     public void registerClientCommands(CommandHandler handler){
-
-        //register a simple reply command
-        handler.<Player>register("reply", "<text...>", "A simple ping command that echoes a player's text.", (args, player) -> {
+        handler.<Player>register("reply", "<text...>", "Echoes text.", (args, player) -> {
             player.sendMessage("You said: [accent] " + args[0]);
         });
 
@@ -311,22 +282,20 @@ public class CabbageticMindustryPlugin extends Plugin{
             player.sendMessage(sb.toString());
         });
 
-        handler.<Player>register("go", "[mapName...]", "Trigger GameOver or switch maps.", (args, player) -> {
-            // CASE 1: Admin only /go (no map name)
+        // Fully patched stable transition command
+        handler.<Player>register("go", "[mapName...]", "Switch maps seamlessly.", (args, player) -> {
             if(args.length == 0){
                 if(!player.admin){
-                    player.sendMessage("[scarlet]Only admins can force a simple GameOver.");
+                    player.sendMessage("[scarlet]Only admins can force an instant GameOver.");
                     return;
                 }
                 Events.fire(new GameOverEvent(Team.crux));
                 return;
             }
 
-            // CASE 2: /go <mapName> (Everyone with 5 min cooldown)
             String mapName = args[0];
             long lastUse = goCooldowns.get(player.usid(), 0L);
         
-            // Logic check: Is it an admin or has 5 mins passed? (300,000 ms)
             if(!player.admin && Time.millis() - lastUse < 300000){
                 long remaining = (300000 - (Time.millis() - lastUse)) / 1000;
                 player.sendMessage("[scarlet]Wait " + remaining + "s before changing maps again.");
@@ -336,64 +305,65 @@ public class CabbageticMindustryPlugin extends Plugin{
             mindustry.maps.Map found = Vars.maps.all().find(m -> m.name().equalsIgnoreCase(mapName));
             if(found != null){
                 goCooldowns.put(player.usid(), Time.millis());
-                Call.sendMessage("[accent]" + player.name + "[white] is changing the map to [accent]" + found.name());
+                Call.sendMessage("[accent]" + player.name + "[white] is switching the map to [accent]" + found.name());
                 
+                // Using a safe async scheduling post with atomic execution blocks
                 Core.app.post(() -> {
-                    Call.sendMessage("[accent]Loading new map: [white]" + found.name());
                     Vars.logic.reset();
-                    Vars.world.loadMap(found);
-                    Vars.state.rules.attackMode = true;
-                    Vars.logic.play();
-                    for(Player p : Groups.player){
-                        Vars.netServer.sendWorldData(p);
-                    }
-            });
+                    
+                    // Yield execution for 1 game tick to allow network buffers to clear
+                    Time.run(1f, () -> {
+                        Vars.world.loadMap(found);
+                        Vars.state.rules.attackMode = true;
+                        Vars.logic.play();
+                        
+                        // Explicit cleanly scheduled synchronization loop
+                        for(Player p : Groups.player){
+                            Vars.netServer.sendWorldData(p);
+                        }
+                        Log.info("Map successfully changed to: " + found.name());
+                    });
+                });
             } else {
                 player.sendMessage("[scarlet]Map not found: " + mapName);
             }
         });
 
-        // COMMAND TO SAVE ADMINS PERMANENTLY
+        // Saved permanently inside JSON config map array
         handler.<Player>register("admin-save", "Save your UUID as an opAdmin.", (args, player) -> {
             if(player.admin){
                 config.opAdmins.add(player.usid());
                 saveConfig();
-                player.sendMessage("[green]UUID saved to Config JSON!");
+                player.sendMessage("[green]Your device USID has been permanently whitelisted to the JSON config file!");
             }
         });
 
-        handler.<Player>register("admin-remove", "<UUID/Name>", "Remove opAdmin.", (args, player) -> {
+        handler.<Player>register("admin-remove", "<UUID/Name>", "Remove opAdmin status.", (args, player) -> {
             if(!player.admin){
                 player.sendMessage("[scarlet]Only admins can use this command.");
                 return;
             }
 
             String target = args[0];
-            if(opAdmins.remove(target)) {
+            
+            // Direct config target key lookup
+            if(config.opAdmins.contains(target)) {
+                config.opAdmins.remove(target);
                 saveConfig();
-                player.sendMessage("[yellow]UUID removed from Config.");
-            }
-    
-            // Check if we are removing by USID directly
-            if(opAdmins.contains(target)){
-                opAdmins.remove(target);
-                Core.settings.putJson("op-admins", ObjectSet.class, opAdmins);
-                player.sendMessage("[green]Removed USID " + target + " from opAdmins.");
+                player.sendMessage("[yellow]UUID configuration key wiped cleanly.");
                 return;
             }
 
-            // Otherwise, try to find a player online with that name
-            Player found = Groups.player.find(p -> p.name.equalsIgnoreCase(target));
+            Player found = Groups.player.find(p -> p.name.equalsIgnoreCase(target) || p.usid().equals(target));
             if(found != null){
-                opAdmins.remove(found.usid());
-                found.admin = false; // Take away their current powers
-                Core.settings.putJson("op-admins", ObjectSet.class, opAdmins);
-                player.sendMessage("[green]Removed " + found.name + " from opAdmins.");
+                config.opAdmins.remove(found.usid());
+                found.admin = false;
+                saveConfig();
+                player.sendMessage("[green]Removed " + found.name + " from local runtime lists and saved.");
             } else {
-                player.sendMessage("[scarlet]Player or USID not found. Use their full name or USID.");
+                player.sendMessage("[scarlet]Player identifier target not found.");
             }
         });
-        
     }
 
     private void message(Player player){
@@ -410,8 +380,8 @@ public class CabbageticMindustryPlugin extends Plugin{
     }
 
     private void saveConfig() {
-        configFile.writeString(json.prettyPrint(config));
+        if(configFile != null && config != null) {
+            configFile.writeString(json.prettyPrint(config));
+        }
     }
-    
-
 }
